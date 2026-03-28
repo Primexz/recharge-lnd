@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/lightningnetwork/lnd v0.20.1-beta
 	github.com/spf13/viper v1.20.1
-	go.uber.org/zap v1.17.0
+	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.78.0
 )
 
@@ -161,7 +161,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.9.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.44.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/mod v0.29.0 // indirect
