@@ -1,6 +1,6 @@
 module github.com/primexz/recharge-lnd
 
-go 1.25.5
+go 1.26.1
 
 require (
 	github.com/lightningnetwork/lnd v0.20.1-beta
