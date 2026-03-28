@@ -11,6 +11,7 @@ import (
 	"github.com/primexz/recharge-lnd/internal/fees"
 	"github.com/primexz/recharge-lnd/internal/lnd"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func Run(configPath, version string, dryRun bool) error {
@@ -70,18 +71,17 @@ func Run(configPath, version string, dryRun bool) error {
 func buildLogger(level string) (*zap.Logger, error) {
 	var zapCfg zap.Config
 
+	lvl, err := zapcore.ParseLevel(level)
+	if err != nil {
+		return nil, fmt.Errorf("parsing log level: %w", err)
+	}
+
 	switch level {
 	case "debug":
 		zapCfg = zap.NewDevelopmentConfig()
-	case "warn":
-		zapCfg = zap.NewProductionConfig()
-		zapCfg.Level = zap.NewAtomicLevelAt(zap.WarnLevel)
-	case "error":
-		zapCfg = zap.NewProductionConfig()
-		zapCfg.Level = zap.NewAtomicLevelAt(zap.ErrorLevel)
 	default:
 		zapCfg = zap.NewProductionConfig()
-		zapCfg.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
+		zapCfg.Level = zap.NewAtomicLevelAt(lvl)
 	}
 
 	return zapCfg.Build()
