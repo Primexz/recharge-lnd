@@ -23,33 +23,33 @@ type LNDConfig struct {
 }
 
 type AutoFeesConfig struct {
-	Enabled            bool          `mapstructure:"enabled"`
-	ReferencePeriod    time.Duration `mapstructure:"reference_period"`
-	AnalysisPeriod     time.Duration `mapstructure:"analysis_period"`
-	AdjustmentInterval time.Duration `mapstructure:"adjustment_interval"`
-	TopPeersCount      int           `mapstructure:"top_peers_count"`
-	FeeIncrementPPM    int64         `mapstructure:"fee_increment_ppm"`
-	MinFeePPM          int64         `mapstructure:"min_fee_ppm"`
-	MaxFeePPM          int64         `mapstructure:"max_fee_ppm"`
-	LowLiquidityThreshold  float64  `mapstructure:"low_liquidity_threshold"`
-	LiquidityScarcityBonus int64    `mapstructure:"liquidity_scarcity_bonus_ppm"`
-	BaseFee            int64         `mapstructure:"base_fee_msat"`
-	TimeLockDelta      uint32        `mapstructure:"time_lock_delta"`
-	ExcludeChannels    []uint64      `mapstructure:"exclude_channels"`
+	Enabled                bool          `mapstructure:"enabled"`
+	ReferencePeriod        time.Duration `mapstructure:"reference_period"`
+	AnalysisPeriod         time.Duration `mapstructure:"analysis_period"`
+	AdjustmentInterval     time.Duration `mapstructure:"adjustment_interval"`
+	TopPeersCount          int           `mapstructure:"top_peers_count"`
+	FeeIncrementPPM        int64         `mapstructure:"fee_increment_ppm"`
+	MinFeePPM              int64         `mapstructure:"min_fee_ppm"`
+	MaxFeePPM              int64         `mapstructure:"max_fee_ppm"`
+	LowLiquidityThreshold  float64       `mapstructure:"low_liquidity_threshold"`
+	LiquidityScarcityBonus int64         `mapstructure:"liquidity_scarcity_bonus_ppm"`
+	BaseFee                int64         `mapstructure:"base_fee_msat"`
+	TimeLockDelta          uint32        `mapstructure:"time_lock_delta"`
+	ExcludeChannels        []uint64      `mapstructure:"exclude_channels"`
 }
 
 type PolicyConfig struct {
-	Name           string  `mapstructure:"name"`
-	MinRatio       float64 `mapstructure:"min_ratio"`
-	MaxRatio       float64 `mapstructure:"max_ratio"`
-	Strategy       string  `mapstructure:"strategy"` // "static" or "proportional"
-	FeePPM         int64   `mapstructure:"fee_ppm"`
-	MinFeePPM      int64   `mapstructure:"min_fee_ppm"`
-	MaxFeePPM      int64   `mapstructure:"max_fee_ppm"`
-	BaseFee        int64   `mapstructure:"base_fee_msat"`
-	InboundFeePPM  int32   `mapstructure:"inbound_fee_ppm"`
-	InboundBaseFee int32   `mapstructure:"inbound_base_fee_msat"`
-	TimeLockDelta  uint32  `mapstructure:"time_lock_delta"`
+	Name           string   `mapstructure:"name"`
+	MinRatio       float64  `mapstructure:"min_ratio"`
+	MaxRatio       float64  `mapstructure:"max_ratio"`
+	Strategy       string   `mapstructure:"strategy"` // "static" or "proportional"
+	FeePPM         int64    `mapstructure:"fee_ppm"`
+	MinFeePPM      int64    `mapstructure:"min_fee_ppm"`
+	MaxFeePPM      int64    `mapstructure:"max_fee_ppm"`
+	BaseFee        int64    `mapstructure:"base_fee_msat"`
+	InboundFeePPM  int32    `mapstructure:"inbound_fee_ppm"`
+	InboundBaseFee int32    `mapstructure:"inbound_base_fee_msat"`
+	TimeLockDelta  uint32   `mapstructure:"time_lock_delta"`
 	Channels       []uint64 `mapstructure:"channels"`
 }
 

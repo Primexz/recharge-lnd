@@ -23,7 +23,7 @@ func Run(configPath, version string, dryRun bool) error {
 	if err != nil {
 		return fmt.Errorf("creating logger: %w", err)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	logger.Info("starting lnd-fees",
 		zap.String("version", version),
@@ -36,7 +36,7 @@ func Run(configPath, version string, dryRun bool) error {
 	if err := client.Connect(); err != nil {
 		return fmt.Errorf("connecting to LND: %w", err)
 	}
-	defer client.Disconnect()
+	defer func() { _ = client.Disconnect() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
