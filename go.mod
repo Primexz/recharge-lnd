@@ -3,7 +3,7 @@ module github.com/primexz/recharge-lnd
 go 1.25.5
 
 require (
-	github.com/lightningnetwork/lnd v0.20.1-beta
+	github.com/lightningnetwork/lnd v0.20.1-beta.rc1
 	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.17.0
 	google.golang.org/grpc v1.78.0
