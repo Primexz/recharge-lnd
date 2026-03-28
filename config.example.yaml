@@ -1,0 +1,59 @@
+lnd:
+  host: "localhost"
+  port: 10009
+  tls_cert_path: "~/.lnd/tls.cert"
+  macaroon_path: "~/.lnd/data/chain/bitcoin/mainnet/admin.macaroon"
+
+log_level: "info"
+
+autofees:
+  enabled: true
+
+  reference_period: "1440h"       # target calculation window (60 days)
+  analysis_period: "168h"         # recent performance window (7 days)
+  adjustment_interval: "72h"      # how often fees are adjusted
+  top_peers_count: 5
+  fee_increment_ppm: 5
+  min_fee_ppm: 1
+  max_fee_ppm: 5000
+  low_liquidity_threshold: 0.125
+  liquidity_scarcity_bonus_ppm: 10
+  base_fee_msat: 0
+  time_lock_delta: 40
+  # exclude_channels:
+  #   - 123456789012345
+
+# Policies evaluated in order, first match wins. Matched channels skip autofees.
+# Strategies: "static" (fixed fee_ppm) or "proportional" (interpolate min/max by ratio)
+policies:
+  - name: "discourage-routing-extreme"
+    max_ratio: 0.05
+    strategy: "proportional"
+    min_fee_ppm: 32
+    max_fee_ppm: 1000
+    inbound_fee_ppm: -64
+    base_fee_msat: 0
+    time_lock_delta: 40
+
+  - name: "discourage-routing"
+    min_ratio: 0.05
+    max_ratio: 0.20
+    strategy: "proportional"
+    min_fee_ppm: 32
+    max_fee_ppm: 400
+    inbound_fee_ppm: -32
+    base_fee_msat: 0
+    time_lock_delta: 40
+
+  - name: "encourage-routing"
+    min_ratio: 0.98
+    strategy: "static"
+    fee_ppm: 4
+    inbound_fee_ppm: 0
+    base_fee_msat: 0
+    time_lock_delta: 40
+
+  # - name: "special-peer"
+  #   channels: [123456789012345]
+  #   strategy: "static"
+  #   fee_ppm: 100
