@@ -7,6 +7,10 @@ import (
 	"github.com/primexz/recharge-lnd/internal/config"
 )
 
+func fp(v float64) *float64 { return &v }
+func bp(v bool) *bool       { return &v }
+func ip(v int64) *int64     { return &v }
+
 func TestProportionalFee(t *testing.T) {
 	tests := []struct {
 		name                      string
@@ -82,7 +86,7 @@ func TestMatchChannel(t *testing.T) {
 	policies := []config.PolicyConfig{
 		{
 			Name:          "extreme",
-			MaxRatio:      0.05,
+			MaxRatio:      fp(0.05),
 			Strategy:      "proportional",
 			MinFeePPM:     32,
 			MaxFeePPM:     1000,
@@ -90,8 +94,8 @@ func TestMatchChannel(t *testing.T) {
 		},
 		{
 			Name:          "discourage",
-			MinRatio:      0.05,
-			MaxRatio:      0.20,
+			MinRatio:      fp(0.05),
+			MaxRatio:      fp(0.20),
 			Strategy:      "proportional",
 			MinFeePPM:     32,
 			MaxFeePPM:     400,
@@ -99,7 +103,7 @@ func TestMatchChannel(t *testing.T) {
 		},
 		{
 			Name:          "encourage",
-			MinRatio:      0.98,
+			MinRatio:      fp(0.98),
 			Strategy:      "static",
 			FeePPM:        4,
 			InboundFeePPM: 0,
@@ -150,7 +154,7 @@ func TestMatchChannel(t *testing.T) {
 				LocalBalance: tt.local,
 				Capacity:     tt.cap,
 			}
-			result, ok := sp.matchChannel(ch)
+			result, ok := sp.matchChannel(ch, nil, true)
 			if ok != tt.wantMatch {
 				t.Fatalf("matchChannel() matched = %v, want %v", ok, tt.wantMatch)
 			}
@@ -180,13 +184,13 @@ func TestMatchChannelSpecificChannels(t *testing.T) {
 	}
 
 	ch := &lnrpc.Channel{ChanId: 99, LocalBalance: 500, Capacity: 1000}
-	result, ok := sp.matchChannel(ch)
+	result, ok := sp.matchChannel(ch, nil, true)
 	if !ok || result.FeePPM != 42 {
 		t.Errorf("expected channel 99 to match with fee 42, got matched=%v fee=%d", ok, result.FeePPM)
 	}
 
 	ch2 := &lnrpc.Channel{ChanId: 100, LocalBalance: 500, Capacity: 1000}
-	_, ok = sp.matchChannel(ch2)
+	_, ok = sp.matchChannel(ch2, nil, true)
 	if ok {
 		t.Error("expected channel 100 to not match")
 	}
@@ -195,14 +199,76 @@ func TestMatchChannelSpecificChannels(t *testing.T) {
 func TestMatchChannelFirstRuleWins(t *testing.T) {
 	sp := &StaticPolicies{
 		policies: []config.PolicyConfig{
-			{Name: "first", MaxRatio: 0.10, Strategy: "static", FeePPM: 100},
-			{Name: "second", MaxRatio: 0.20, Strategy: "static", FeePPM: 200},
+			{Name: "first", MaxRatio: fp(0.10), Strategy: "static", FeePPM: 100},
+			{Name: "second", MaxRatio: fp(0.20), Strategy: "static", FeePPM: 200},
 		},
 	}
 
 	ch := &lnrpc.Channel{ChanId: 1, LocalBalance: 50, Capacity: 1000}
-	result, ok := sp.matchChannel(ch)
+	result, ok := sp.matchChannel(ch, nil, true)
 	if !ok || result.PolicyName != "first" {
 		t.Errorf("expected first rule to win, got %q", result.PolicyName)
+	}
+}
+
+func TestMatchChannelPrivateFilter(t *testing.T) {
+	sp := &StaticPolicies{
+		policies: []config.PolicyConfig{
+			{Name: "leafnode", Private: bp(true), Strategy: "static", FeePPM: 1000},
+		},
+	}
+
+	private := &lnrpc.Channel{ChanId: 1, LocalBalance: 500, Capacity: 1000, Private: true}
+	result, ok := sp.matchChannel(private, nil, true)
+	if !ok || result.FeePPM != 1000 {
+		t.Errorf("expected private channel to match, got matched=%v fee=%d", ok, result.FeePPM)
+	}
+
+	public := &lnrpc.Channel{ChanId: 2, LocalBalance: 500, Capacity: 1000, Private: false}
+	_, ok = sp.matchChannel(public, nil, true)
+	if ok {
+		t.Error("expected public channel to not match leafnode policy")
+	}
+}
+
+func TestMatchChannelSyncedToChainFilter(t *testing.T) {
+	sp := &StaticPolicies{
+		policies: []config.PolicyConfig{
+			{Name: "lost-onchain-sync", SyncedToChain: bp(false), Strategy: "static", FeePPM: 210000},
+		},
+	}
+
+	ch := &lnrpc.Channel{ChanId: 1, LocalBalance: 500, Capacity: 1000}
+
+	_, ok := sp.matchChannel(ch, nil, true) // synced → no match
+	if ok {
+		t.Error("expected synced node to not match lost-onchain-sync policy")
+	}
+
+	result, ok := sp.matchChannel(ch, nil, false) // not synced → match
+	if !ok || result.FeePPM != 210000 {
+		t.Errorf("expected unsynced node to match, got matched=%v fee=%d", ok, result.FeePPM)
+	}
+}
+
+func TestMatchChannelZeroMaxRatio(t *testing.T) {
+	sp := &StaticPolicies{
+		policies: []config.PolicyConfig{
+			{Name: "all-liquidity-is-theirs", MaxRatio: fp(0.0), Strategy: "static", FeePPM: 1000},
+		},
+	}
+
+	// exactly 0 local balance → ratio 0.0 → matches
+	ch := &lnrpc.Channel{ChanId: 1, LocalBalance: 0, Capacity: 1000}
+	result, ok := sp.matchChannel(ch, nil, true)
+	if !ok || result.FeePPM != 1000 {
+		t.Errorf("expected zero-balance channel to match, got matched=%v fee=%d", ok, result.FeePPM)
+	}
+
+	// any local balance → ratio > 0.0 → no match
+	ch2 := &lnrpc.Channel{ChanId: 2, LocalBalance: 1, Capacity: 1000}
+	_, ok = sp.matchChannel(ch2, nil, true)
+	if ok {
+		t.Error("expected channel with local balance to not match")
 	}
 }

@@ -34,8 +34,25 @@ type MatchResult struct {
 func (s *StaticPolicies) Run(ctx context.Context, channels []*lnrpc.Channel) (map[uint64]bool, error) {
 	matched := make(map[uint64]bool)
 
+	nodeInfo, err := s.client.GetInfo(ctx)
+	syncedToChain := true
+	if err != nil {
+		s.logger.Warn("failed to get node info, assuming synced", zap.Error(err))
+	} else {
+		syncedToChain = nodeInfo.SyncedToChain
+	}
+
 	for _, ch := range channels {
-		result, ok := s.matchChannel(ch)
+		edge, err := s.client.GetChanInfo(ctx, ch.ChanId)
+		if err != nil {
+			s.logger.Error("failed to get channel info",
+				zap.Uint64("chan_id", ch.ChanId),
+				zap.Error(err),
+			)
+			continue
+		}
+
+		result, ok := s.matchChannel(ch, edge, syncedToChain)
 		if !ok {
 			continue
 		}
@@ -43,16 +60,6 @@ func (s *StaticPolicies) Run(ctx context.Context, channels []*lnrpc.Channel) (ma
 
 		alias := s.client.GetNodeAlias(ctx, ch.RemotePubkey)
 		ratio := float64(ch.LocalBalance) / float64(ch.Capacity)
-
-		edge, err := s.client.GetChanInfo(ctx, ch.ChanId)
-		if err != nil {
-			s.logger.Error("failed to get channel info",
-				zap.String("peer", alias),
-				zap.Uint64("chan_id", ch.ChanId),
-				zap.Error(err),
-			)
-			continue
-		}
 
 		currentFee := currentOutboundFeePPM(edge, ch.RemotePubkey)
 		currentInbound := currentInboundFee(edge, ch.RemotePubkey)
@@ -106,7 +113,7 @@ func (s *StaticPolicies) Run(ctx context.Context, channels []*lnrpc.Channel) (ma
 	return matched, nil
 }
 
-func (s *StaticPolicies) matchChannel(ch *lnrpc.Channel) (MatchResult, bool) {
+func (s *StaticPolicies) matchChannel(ch *lnrpc.Channel, edge *lnrpc.ChannelEdge, syncedToChain bool) (MatchResult, bool) {
 	if ch.Capacity == 0 {
 		return MatchResult{}, false
 	}
@@ -120,9 +127,26 @@ func (s *StaticPolicies) matchChannel(ch *lnrpc.Channel) (MatchResult, bool) {
 			}
 		}
 
-		minOK := p.MinRatio == 0 || ratio >= p.MinRatio
-		maxOK := p.MaxRatio == 0 || ratio <= p.MaxRatio
-		if !minOK || !maxOK {
+		if p.MinRatio != nil && ratio < *p.MinRatio {
+			continue
+		}
+		if p.MaxRatio != nil && ratio > *p.MaxRatio {
+			continue
+		}
+
+		if p.Private != nil && ch.Private != *p.Private {
+			continue
+		}
+
+		if p.SyncedToChain != nil && syncedToChain != *p.SyncedToChain {
+			continue
+		}
+
+		peerFeePPM := int64(0)
+		if edge != nil {
+			peerFeePPM = currentOutboundFeePPM(edge, ch.RemotePubkey)
+		}
+		if p.MinPeerFeePPM != nil && peerFeePPM < *p.MinPeerFeePPM {
 			continue
 		}
 
@@ -143,7 +167,16 @@ func (s *StaticPolicies) matchChannel(ch *lnrpc.Channel) (MatchResult, bool) {
 		case "static":
 			result.FeePPM = p.FeePPM
 		case "proportional":
-			result.FeePPM = proportionalFee(ratio, p.MinRatio, p.MaxRatio, p.MinFeePPM, p.MaxFeePPM)
+			minR, maxR := 0.0, 0.0
+			if p.MinRatio != nil {
+				minR = *p.MinRatio
+			}
+			if p.MaxRatio != nil {
+				maxR = *p.MaxRatio
+			}
+			result.FeePPM = proportionalFee(ratio, minR, maxR, p.MinFeePPM, p.MaxFeePPM)
+		case "match_peer":
+			result.FeePPM = peerFeePPM
 		}
 
 		return result, true

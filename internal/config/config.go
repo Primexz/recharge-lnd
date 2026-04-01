@@ -41,9 +41,12 @@ type AutoFeesConfig struct {
 
 type PolicyConfig struct {
 	Name           string   `mapstructure:"name"`
-	MinRatio       float64  `mapstructure:"min_ratio"`
-	MaxRatio       float64  `mapstructure:"max_ratio"`
-	Strategy       string   `mapstructure:"strategy"` // "static" or "proportional"
+	MinRatio       *float64 `mapstructure:"min_ratio"`
+	MaxRatio       *float64 `mapstructure:"max_ratio"`
+	Private        *bool    `mapstructure:"private"`          // filter: private channel
+	SyncedToChain  *bool    `mapstructure:"synced_to_chain"`  // filter: node chain sync state
+	MinPeerFeePPM  *int64   `mapstructure:"min_peer_fee_ppm"` // filter: peer outbound fee >= N
+	Strategy       string   `mapstructure:"strategy"`         // "static", "proportional", or "match_peer"
 	FeePPM         int64    `mapstructure:"fee_ppm"`
 	MinFeePPM      int64    `mapstructure:"min_fee_ppm"`
 	MaxFeePPM      int64    `mapstructure:"max_fee_ppm"`
@@ -130,16 +133,16 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("autofees.min_fee_ppm (%d) must be <= max_fee_ppm (%d)", cfg.AutoFees.MinFeePPM, cfg.AutoFees.MaxFeePPM)
 	}
 	for i, p := range cfg.Policies {
-		if p.Strategy != "static" && p.Strategy != "proportional" {
-			return fmt.Errorf("policies[%d] (%s): strategy must be 'static' or 'proportional', got '%s'", i, p.Name, p.Strategy)
+		if p.Strategy != "static" && p.Strategy != "proportional" && p.Strategy != "match_peer" {
+			return fmt.Errorf("policies[%d] (%s): strategy must be 'static', 'proportional', or 'match_peer', got '%s'", i, p.Name, p.Strategy)
 		}
-		if p.MinRatio < 0 || p.MinRatio > 1 {
+		if p.MinRatio != nil && (*p.MinRatio < 0 || *p.MinRatio > 1) {
 			return fmt.Errorf("policies[%d] (%s): min_ratio must be between 0 and 1", i, p.Name)
 		}
-		if p.MaxRatio < 0 || p.MaxRatio > 1 {
+		if p.MaxRatio != nil && (*p.MaxRatio < 0 || *p.MaxRatio > 1) {
 			return fmt.Errorf("policies[%d] (%s): max_ratio must be between 0 and 1", i, p.Name)
 		}
-		if p.MinRatio > p.MaxRatio && p.MaxRatio != 0 {
+		if p.MinRatio != nil && p.MaxRatio != nil && *p.MinRatio > *p.MaxRatio {
 			return fmt.Errorf("policies[%d] (%s): min_ratio must be <= max_ratio", i, p.Name)
 		}
 		if p.Strategy == "proportional" && p.MinFeePPM > p.MaxFeePPM {
