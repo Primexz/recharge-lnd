@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	LND      LNDConfig      `mapstructure:"lnd"`
-	AutoFees AutoFeesConfig `mapstructure:"autofees"`
-	Policies []PolicyConfig `mapstructure:"policies"`
-	LogLevel string         `mapstructure:"log_level"`
+	LND            LNDConfig      `mapstructure:"lnd"`
+	AutoFees       AutoFeesConfig `mapstructure:"autofees"`
+	Policies       []PolicyConfig `mapstructure:"policies"`
+	PolicyInterval time.Duration  `mapstructure:"policy_interval"`
+	LogLevel       string         `mapstructure:"log_level"`
 }
 
 type LNDConfig struct {
@@ -109,6 +110,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("autofees.liquidity_scarcity_bonus_ppm", 10)
 	v.SetDefault("autofees.base_fee_msat", 0)
 	v.SetDefault("autofees.time_lock_delta", 40)
+
+	v.SetDefault("policy_interval", "24h")
 
 	v.SetDefault("log_level", "info")
 }

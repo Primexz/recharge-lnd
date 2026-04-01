@@ -23,6 +23,9 @@ autofees:
   # exclude_channels:
   #   - 123456789012345
 
+# How often static policies are re-evaluated and applied (default: 24h)
+policy_interval: "24h"
+
 # Policies evaluated in order, first match wins. Matched channels skip autofees.
 # Strategies: "static" (fixed fee_ppm) or "proportional" (interpolate min/max by ratio)
 policies:
